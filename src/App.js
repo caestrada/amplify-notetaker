@@ -3,7 +3,7 @@ import { API, graphqlOperation } from "aws-amplify";
 import { AmplifyAuthenticator, AmplifySignOut } from "@aws-amplify/ui-react";
 import { createNote, deleteNote, updateNote } from "./graphql/mutations";
 import { listNotes } from "./graphql/queries";
-import { onCreateNote, onDeleteNote } from "./graphql/subscriptions";
+import { onCreateNote, onDeleteNote, onUpdateNote } from "./graphql/subscriptions";
 
 class App extends Component {
 
@@ -32,10 +32,26 @@ class App extends Component {
         this.setState({ notes: updatedNotes });
       }
     });
+
+    this.updateNoteListener = API.graphql(graphqlOperation(onUpdateNote)).subscribe({
+      next: noteData => {
+        const { notes } = this.state;
+        const updatedNote = noteData.value.data.onUpdateNote;
+        const index = this.state.notes.findIndex(note => note.id === updatedNote.id);
+        const updatedNotes = [
+          ...notes.slice(0, index),
+          updatedNote,
+          ...notes.slice(index + 1),
+        ]
+        this.setState({ notes: updatedNotes, note: "", id: "" });
+      }
+    });
   }
 
   componentWillUnmount() {
     this.createNoteListener.unsubscribe();
+    this.deleteNoteListener.unsubscribe();
+    this.updateNoteListener.unsubscribe();
   }
 
   getNotes = async () => {
@@ -73,18 +89,17 @@ class App extends Component {
   }
 
   handleUpdateNote = async () => {
-    const { notes, id, note } = this.state;
+    const { id, note } = this.state;
     const input = { id, note };
-    const result = await API.graphql(graphqlOperation(updateNote, { input }));
-    const updatedNote = result.data.updateNote;
-    const index = notes.findIndex(note => note.id === updatedNote.id);
-    const updatedNotes = [
-      ...notes.slice(0, index),
-      updatedNote,
-      ...notes.slice(index + 1),
-    ]
-
-    this.setState({ notes: updatedNotes, note: "", id: "" });
+    await API.graphql(graphqlOperation(updateNote, { input }));
+    // const updatedNote = result.data.updateNote;
+    // const index = notes.findIndex(note => note.id === updatedNote.id);
+    // const updatedNotes = [
+    //   ...notes.slice(0, index),
+    //   updatedNote,
+    //   ...notes.slice(index + 1),
+    // ]
+    // this.setState({ notes: updatedNotes, note: "", id: "" });
   }
 
   handleDeleteNote = async noteId => {
