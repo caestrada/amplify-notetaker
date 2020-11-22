@@ -3,7 +3,7 @@ import { API, graphqlOperation } from "aws-amplify";
 import { AmplifyAuthenticator, AmplifySignOut } from "@aws-amplify/ui-react";
 import { createNote, deleteNote, updateNote } from "./graphql/mutations";
 import { listNotes } from "./graphql/queries";
-import { onCreateNote } from "./graphql/subscriptions";
+import { onCreateNote, onDeleteNote } from "./graphql/subscriptions";
 
 class App extends Component {
 
@@ -15,6 +15,7 @@ class App extends Component {
 
   async componentDidMount() {
     this.getNotes();
+
     this.createNoteListener = API.graphql(graphqlOperation(onCreateNote)).subscribe({
       next: noteData => {
         const newNote = noteData.value.data.onCreateNote;
@@ -22,7 +23,15 @@ class App extends Component {
         const updatedNotes = [...prevNotes, newNote];
         this.setState({ notes: updatedNotes });
       }
-    })
+    });
+
+    this.deleteNoteListener = API.graphql(graphqlOperation(onDeleteNote)).subscribe({
+      next: noteData => {
+        const deletedNote = noteData.value.data.onDeleteNote;
+        const updatedNotes = this.state.notes.filter(note => note.id !== deletedNote.id);
+        this.setState({ notes: updatedNotes });
+      }
+    });
   }
 
   componentWillUnmount() {
@@ -79,13 +88,12 @@ class App extends Component {
   }
 
   handleDeleteNote = async noteId => {
-    const { notes } = this.state;
+    // const { notes } = this.state;
     const input = {id: noteId};
-    const result = await API.graphql(graphqlOperation(deleteNote, { input }));
-    const deletedNoteId = result.data.deleteNote.id;
-
-    const updatedNotes = notes.filter(note => note.id !== deletedNoteId);
-    this.setState({ notes: updatedNotes });
+    await API.graphql(graphqlOperation(deleteNote, { input }));
+    // const deletedNoteId = result.data.deleteNote.id;
+    // const updatedNotes = notes.filter(note => note.id !== deletedNoteId);
+    // this.setState({ notes: updatedNotes });
   }
 
   handleSetNote = ({ note, id }) => this.setState({ note, id })
